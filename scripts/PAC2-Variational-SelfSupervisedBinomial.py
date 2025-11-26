@@ -162,7 +162,7 @@ def PAC2VI(dataSource=tf.keras.datasets.fashion_mnist, NPixels=14, algorithm=0, 
 
     KL = (- entropy - logprior)/N
 
-    if (algorithm==2 or algorithm==3):
+    if algorithm>=2:
         elbo = datalikelihood + var - KL
     elif algorithm == 1:
         elbo = datalikelihood - KL
