@@ -14,6 +14,7 @@ def PAC2VI(dataSource=tf.keras.datasets.fashion_mnist, NPixels=14, algorithm=0, 
                 1- Variational Learning
                 2- PAC^2-Variational Learning
                 3- PAC^2_T-Variational Learning
+                4- PAC^2-Variational Learning with third degree term
             PARTICLES: Number of Monte-Carlo samples used to compute the posterior prediction distribution.
             batch_size: Size of the batch.
             num_epochs: Number of epochs.
@@ -114,14 +115,22 @@ def PAC2VI(dataSource=tf.keras.datasets.fashion_mnist, NPixels=14, algorithm=0, 
         pW,pb,pW_out,pb_out,px,py = model(num_hidden_units, x)
 
     with ed.interception(ed.make_value_setter(W=qW_,b=qb_,W_out=qW_out_,b_out=qb_out_)):
-        pW_,pb_,pW_out_,pb_out_,px_,py_ = model(num_hidden_units, x)
+        pW_2,pb_2,pW_out_2,pb_out_2,px_2,py_2 = model(num_hidden_units, x)
+
+    with ed.interception(ed.make_value_setter(W=qW_,b=qb_,W_out=qW_out_,b_out=qb_out_)):
+        pW_3,pb_3,pW_out_3,pb_out_3,px_3,py_3 = model(num_hidden_units, x)
+
+    with ed.interception(ed.make_value_setter(W=qW_,b=qb_,W_out=qW_out_,b_out=qb_out_)):
+        pW_4,pb_4,pW_out_4,pb_out_4,px_4,py_4 = model(num_hidden_units, x)
 
 
     pylogprob = tf.expand_dims(tf.reduce_sum(py.distribution.log_prob(y_batch),axis=1),1)
-    py_logprob = tf.expand_dims(tf.reduce_sum(py_.distribution.log_prob(y_batch),axis=1),1)
+    py_logprob_2 = tf.expand_dims(tf.reduce_sum(py_2.distribution.log_prob(y_batch),axis=1),1)
+    py_logprob_3 = tf.expand_dims(tf.reduce_sum(py_3.distribution.log_prob(y_batch),axis=1),1)
+    py_logprob_4 = tf.expand_dims(tf.reduce_sum(py_4.distribution.log_prob(y_batch),axis=1),1)
 
-    logmax = tf.stop_gradient(tf.math.maximum(pylogprob,py_logprob)+0.1)
-    logmean_logmax = tf.math.reduce_logsumexp(tf.concat([pylogprob-logmax,py_logprob-logmax], 1),axis=1) - tf.log(2.)
+    logmax = tf.stop_gradient(tf.math.maximum(pylogprob,py_logprob_2)+0.1)
+    logmean_logmax = tf.math.reduce_logsumexp(tf.concat([pylogprob-logmax,py_logprob_2-logmax], 1),axis=1) - tf.log(2.)
     alpha = tf.expand_dims(logmean_logmax,1)
 
     if (algorithm==3):
@@ -129,7 +138,10 @@ def PAC2VI(dataSource=tf.keras.datasets.fashion_mnist, NPixels=14, algorithm=0, 
     else:
         hmax=1.
 
-    var = 0.5*(tf.reduce_mean(tf.exp(2*pylogprob-2*logmax)*hmax) - tf.reduce_mean(tf.exp(pylogprob + py_logprob - 2*logmax)*hmax))
+    if (algorithm==4):
+        var = 1/3 * (tf.reduce_mean(tf.exp(3*pylogprob - py_logprob_2 - py_logprob_3 - py_logprob_4))) - 3/2 * (tf.reduce_mean(tf.exp(2*pylogprob - py_logprob_2 - py_logprob_3))) + 7/6
+    else:
+        var = 0.5*(tf.reduce_mean(tf.exp(2*pylogprob-2*logmax)*hmax) - tf.reduce_mean(tf.exp(pylogprob + py_logprob_2 - 2*logmax)*hmax))
 
 
     datalikelihood = tf.reduce_mean(pylogprob)
