@@ -15,6 +15,7 @@ def PAC2Ensemble(dataSource=tf.keras.datasets.fashion_mnist, NPixels=28, algorit
                 0- Ensemble Learning [As derived for a first-order PAC-Bayes bound. No change in performance when using several models.]
                 1- PAC^2-Ensemble Learning
                 2- PAC^2_T-Ensemble Learning
+                3- PAC^2-Ensemble Learning with third degree term
             num_ensemble_models: Number of models in the ensemble.
             batch_size: Size of the batch.
             num_epochs: Number of epochs.
@@ -93,6 +94,21 @@ def PAC2Ensemble(dataSource=tf.keras.datasets.fashion_mnist, NPixels=28, algorit
         tpy.append(py)
         logprior = logprior + logp
 
+    if algorithm>=3:
+        t_2 = []
+        t_3 = []
+        t_4 = []
+        for i in range(K):
+            px_2,py_2, logp_2 = model(num_hidden_units,x_batch)
+            px_3,py_3, logp_3 = model(num_hidden_units,x_batch)
+            px_4,py_4, logp_4 = model(num_hidden_units,x_batch)
+            t_2.append(tf.expand_dims(py_2.distribution.log_prob(y_batch),axis=1))
+            t_3.append(tf.expand_dims(py_3.distribution.log_prob(y_batch),axis=1))
+            t_4.append(tf.expand_dims(py_4.distribution.log_prob(y_batch),axis=1))
+        ensemble_2 = tf.concat(t_2,1)
+        ensemble_3 = tf.concat(t_3,1)
+        ensemble_4 = tf.concat(t_4,1)
+
     probs = tf.math.softmax(tf.Variable(tf.ones([K], dtype=tf.float32), trainable=False, name='probs'))
 
 
@@ -111,12 +127,16 @@ def PAC2Ensemble(dataSource=tf.keras.datasets.fashion_mnist, NPixels=28, algorit
             hmax = 1.
         #####
 
-
-        for i in range(K):
-            vari = 0.5*(tf.reduce_mean(tf.exp(2*ensemble[:,i]-2*max)*hmax,axis=0))
-            for j in range(K):
-                vari = vari - 0.5*tf.reduce_sum(tf.reduce_mean(tf.exp(ensemble[:,i] + ensemble[:,j] - 2*max)*hmax,axis=0))*probs[j]
-            varlist.append(vari)
+        if algorithm>=3:
+            for i in range(K):
+                vari = 1/3 * (tf.reduce_mean(tf.exp(3*ensemble[:,i] - ensemble_2[:,i] - ensemble_3[:,i] - ensemble_4[:,i]))) - 3/2 * (tf.reduce_mean(tf.exp(2*ensemble[:,i] - ensemble_2[:,i] - ensemble_3[:,i]))) + 7/6
+                varlist.append(vari)
+        else:
+            for i in range(K):
+                vari = 0.5*(tf.reduce_mean(tf.exp(2*ensemble[:,i]-2*max)*hmax,axis=0))
+                for j in range(K):
+                    vari = vari - 0.5*tf.reduce_sum(tf.reduce_mean(tf.exp(ensemble[:,i] + ensemble[:,j] - 2*max)*hmax,axis=0))*probs[j]
+                varlist.append(vari)
 
 
 
@@ -126,7 +146,7 @@ def PAC2Ensemble(dataSource=tf.keras.datasets.fashion_mnist, NPixels=28, algorit
 
     dataenergy = tf.reduce_mean(ensemble,axis=0)
 
-    if (algorithm==1 or algorithm==2):
+    if (algorithm>=1):
         elboEnsemble = dataenergy + var
         elbo = tf.reduce_sum(tf.math.multiply(elboEnsemble, probs))
         elbo = elbo + 2 * tf.reduce_sum(tf.math.multiply(probs, tf.log(probs)))/N + logprior/N
