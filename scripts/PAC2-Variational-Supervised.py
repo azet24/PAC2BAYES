@@ -74,9 +74,13 @@ def PAC2VI(dataSource = tf.keras.datasets.fashion_mnist, NLabels=10, NPixels=28,
 
         qW = ed.Normal(W_loc, scale=W_scale, name="W")
         qW_ = ed.Normal(W_loc, scale=W_scale, name="W")
+        qW_3 = ed.Normal(W_loc, scale=W_scale, name="W")
+        qW_4 = ed.Normal(W_loc, scale=W_scale, name="W")
 
         qb = ed.Normal(b_loc, scale=b_scale, name="b")
         qb_ = ed.Normal(b_loc, scale=b_scale, name="b")
+        qb_3 = ed.Normal(b_loc, scale=b_scale, name="b")
+        qb_4 = ed.Normal(b_loc, scale=b_scale, name="b")
 
         W_out_loc = tf.Variable(tf.random_normal([NHIDDEN, NLabels], 0.0, 0.1, dtype=tf.float32))
         b_out_loc = tf.Variable(tf.random_normal([1, NLabels], 0.0, 0.1, dtype=tf.float32))
@@ -93,12 +97,18 @@ def PAC2VI(dataSource = tf.keras.datasets.fashion_mnist, NLabels=10, NPixels=28,
         qW_out_ = ed.Normal(W_out_loc, scale=W_out_scale, name="W_out")
         qb_out_ = ed.Normal(b_out_loc, scale=b_out_scale, name="b_out")
 
-        return qW, qW_, qb, qb_, qW_out, qW_out_, qb_out, qb_out_
+        qW_out_3 = ed.Normal(W_out_loc, scale=W_out_scale, name="W_out")
+        qb_out_3 = ed.Normal(b_out_loc, scale=b_out_scale, name="b_out")
+
+        qW_out_4 = ed.Normal(W_out_loc, scale=W_out_scale, name="W_out")
+        qb_out_4 = ed.Normal(b_out_loc, scale=b_out_scale, name="b_out")
+
+        return qW, qW_, qW_3, qW_4, qb, qb_, qb_3, qb_4, qW_out, qW_out_, qW_out_3, qW_out_4, qb_out, qb_out_, qb_out_3, qb_out_4
 
 
     W,b,W_out,b_out,x,y = model(num_hidden_units, x_batch)
 
-    qW,qW_,qb,qb_,qW_out,qW_out_,qb_out,qb_out_ = qmodel(num_hidden_units)
+    qW, qW_, qW_3, qW_4, qb, qb_, qb_3, qb_4, qW_out, qW_out_, qW_out_3, qW_out_4, qb_out, qb_out_, qb_out_3, qb_out_4 = qmodel(num_hidden_units)
 
     with ed.interception(ed.make_value_setter(W=qW,b=qb,W_out=qW_out,b_out=qb_out)):
         pW,pb,pW_out,pb_out,px,py = model(num_hidden_units, x)
@@ -106,10 +116,10 @@ def PAC2VI(dataSource = tf.keras.datasets.fashion_mnist, NLabels=10, NPixels=28,
     with ed.interception(ed.make_value_setter(W=qW_,b=qb_,W_out=qW_out_,b_out=qb_out_)):
         pW_2,pb_2,pW_out_2,pb_out_2,px_2,py_2 = model(num_hidden_units, x)
 
-    with ed.interception(ed.make_value_setter(W=qW_,b=qb_,W_out=qW_out_,b_out=qb_out_)):
+    with ed.interception(ed.make_value_setter(W=qW_3,b=qb_3,W_out=qW_out_3,b_out=qb_out_3)):
         pW_3,pb_3,pW_out_3,pb_out_3,px_3,py_3 = model(num_hidden_units, x)
 
-    with ed.interception(ed.make_value_setter(W=qW_,b=qb_,W_out=qW_out_,b_out=qb_out_)):
+    with ed.interception(ed.make_value_setter(W=qW_4,b=qb_4,W_out=qW_out_4,b_out=qb_out_4)):
         pW_4,pb_4,pW_out_4,pb_out_4,px_4,py_4 = model(num_hidden_units, x)
 
     pylogprob = tf.expand_dims(py.distribution.log_prob(y_batch),1)
@@ -241,16 +251,16 @@ text_file.write(str(PAC2VI(dataSource= tf.keras.datasets.fashion_mnist, NLabels=
 text_file.flush()
 text_file.write(str(PAC2VI(dataSource= tf.keras.datasets.fashion_mnist, NLabels=10, NPixels=28, algorithm=2, PARTICLES=20, batch_size=batch, num_epochs=iter, num_hidden_units= 20)) + "\n")
 text_file.flush()
-text_file.write(str(PAC2VI(dataSource= tf.keras.datasets.fashion_mnist, NLabels=10, NPixels=28, algorithm=3, PARTICLES=20, batch_size=batch, num_epochs=iter, num_hidden_units= 20)) + "\n")
+text_file.write(str(PAC2VI(dataSource= tf.keras.datasets.fashion_mnist, NLabels=10, NPixels=28, algorithm=4, PARTICLES=20, batch_size=batch, num_epochs=iter, num_hidden_units= 20)) + "\n")
 text_file.flush()
 
-text_file.write(str(PAC2VI(dataSource= tf.keras.datasets.cifar10, NLabels=10, NPixels=32, algorithm=0, PARTICLES=1, batch_size=batch, num_epochs=iter, num_hidden_units= 20)) + "\n")
-text_file.flush()
-text_file.write(str(PAC2VI(dataSource= tf.keras.datasets.cifar10, NLabels=10, NPixels=32, algorithm=1, PARTICLES=20, batch_size=batch, num_epochs=iter, num_hidden_units= 20)) + "\n")
-text_file.flush()
-text_file.write(str(PAC2VI(dataSource= tf.keras.datasets.cifar10, NLabels=10, NPixels=32, algorithm=2, PARTICLES=20, batch_size=batch, num_epochs=iter, num_hidden_units= 20)) + "\n")
-text_file.flush()
-text_file.write(str(PAC2VI(dataSource= tf.keras.datasets.cifar10, NLabels=10, NPixels=32, algorithm=3, PARTICLES=20, batch_size=batch, num_epochs=iter, num_hidden_units= 20)) + "\n")
-text_file.flush()
+# text_file.write(str(PAC2VI(dataSource= tf.keras.datasets.cifar10, NLabels=10, NPixels=32, algorithm=0, PARTICLES=1, batch_size=batch, num_epochs=iter, num_hidden_units= 20)) + "\n")
+# text_file.flush()
+# text_file.write(str(PAC2VI(dataSource= tf.keras.datasets.cifar10, NLabels=10, NPixels=32, algorithm=1, PARTICLES=20, batch_size=batch, num_epochs=iter, num_hidden_units= 20)) + "\n")
+# text_file.flush()
+# text_file.write(str(PAC2VI(dataSource= tf.keras.datasets.cifar10, NLabels=10, NPixels=32, algorithm=2, PARTICLES=20, batch_size=batch, num_epochs=iter, num_hidden_units= 20)) + "\n")
+# text_file.flush()
+# text_file.write(str(PAC2VI(dataSource= tf.keras.datasets.cifar10, NLabels=10, NPixels=32, algorithm=3, PARTICLES=20, batch_size=batch, num_epochs=iter, num_hidden_units= 20)) + "\n")
+# text_file.flush()
 
 text_file.close()
